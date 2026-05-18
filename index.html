@@ -6,7 +6,7 @@
   <title>Dashboard Zeladoria Urbana</title>
   <link rel="stylesheet" href="style.css" />
  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="script_tapa_buraco.js?v=64" defer></script>
+<script src="script_tapa_buraco.js?v=65" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -200,6 +200,7 @@
         <p>Produção por dia no período selecionado.</p>
       </div>
       <canvas id="chartSesurbDiario"></canvas>
+      <p id="sesurbMediaDiaria" class="chart-note">Média diária: -</p>
     </article>
 
     <article class="card chart-card">
@@ -211,28 +212,8 @@
     </article>
   </section>
 
-  <section class="chart-grid sesurb-ranking-grid">
-    
+  
 
-
-    <article class="card table-card">
-      <div class="card-title">
-        <h2>Ranking de bairros</h2>
-        <p>Bairros mais atendidos no serviço selecionado.</p>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Bairro</th>
-            <th>Atendimentos</th>
-          </tr>
-        </thead>
-        <tbody id="rankSesurbBairros"></tbody>
-      </table>
-    </article>
-  </section>
 </section>
   </main>
 </body>
