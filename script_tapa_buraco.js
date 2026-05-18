@@ -122,7 +122,7 @@ function parseNumeroSesurb(valor) {
   if (!texto) return 0;
 
   if (texto.includes(',') && texto.includes('.')) {
-    texto = texto.replace(/\./g, '').replace(',', '.');
+    texto = texto.replace(/,/g, '');
   } else if (texto.includes(',') && !texto.includes('.')) {
     texto = texto.replace(',', '.');
   }
@@ -130,7 +130,6 @@ function parseNumeroSesurb(valor) {
   const numero = Number(texto);
   return Number.isFinite(numero) ? numero : 0;
 }
-
 
 function normalizarTexto(valor) {
   return String(valor ?? '')
@@ -824,51 +823,54 @@ function renderSettran() {
   renderSettranTotal(mesSelecionado);
   renderGraficoSettran(mesSelecionado);
   renderNecessidadeSettran();
-}
-const SESURB_SERVICOS = {
+}const SESURB_SERVICOS = {
 
   capinaManual: {
     nome: 'Capina manual + roçagem mecanizada',
     unidade: 'm²',
-    colData: 8,
-    colInicio: 6,
-    colFim: 8,
-    colVia: 3,
-    colBairro: 2,
-    colMedida: 10
+    campoData: ['DT. DA CONCLUSÃO', 'CONCLUSÃO', 'DT CONCLUSÃO'],
+    campoInicio: ['INÍCIO', 'INICIO'],
+    campoFim: ['DT. DA CONCLUSÃO', 'CONCLUSÃO', 'DT CONCLUSÃO'],
+    campoVia: ['LOGRADOURO'],
+    campoBairro: ['BAIRRO'],
+    campoMedida: ['MEDIDA TOTAL'],
+    urlKey: 'capinaManual'
   },
 
   capinaEletrica: {
     nome: 'Capina elétrica',
     unidade: 'm',
-    colData: 2,
-    colInicio: -1,
-    colFim: -1,
-    colVia: 4,
-    colBairro: 3,
-    colMedida: 10
+    campoData: ['DATA EXECUÇÃO', 'DATA EXECUCAO', 'DATA'],
+    campoInicio: null,
+    campoFim: null,
+    campoVia: ['LOCAL', 'AVENIDAS', 'RUAS'],
+    campoBairro: ['BAIRRO'],
+    campoMedida: ['MEDIDA TOTAL'],
+    urlKey: 'capinaEletrica'
   },
 
   drenagem: {
     nome: 'Limpeza de drenagem',
     unidade: 'BL',
-    colData: 0,
-    colInicio: -1,
-    colFim: -1,
-    colVia: 4,
-    colBairro: 3,
-    colMedida: 9
+    campoData: ['DATA'],
+    campoInicio: null,
+    campoFim: null,
+    campoVia: ['LOCALIZAÇÃO', 'LOCALIZACAO'],
+    campoBairro: ['BAIRRO'],
+    campoMedida: ['QUANTIDADES', 'QUANTIDADE'],
+    urlKey: 'drenagem'
   },
 
   sarjeta: {
     nome: 'Pintura de sarjeta',
     unidade: 'm',
-    colData: 7,
-    colInicio: 6,
-    colFim: 7,
-    colVia: 3,
-    colBairro: 2,
-    colMedida: 9
+    campoData: ['DT. DA CONCLUSÃO', 'CONCLUSÃO', 'DT CONCLUSÃO'],
+    campoInicio: ['INICIO', 'INÍCIO'],
+    campoFim: ['DT. DA CONCLUSÃO', 'CONCLUSÃO', 'DT CONCLUSÃO'],
+    campoVia: ['LOGRADOURO'],
+    campoBairro: ['BAIRRO'],
+    campoMedida: ['MEDIDA'],
+    urlKey: 'sarjeta'
   }
 };
 
@@ -891,6 +893,7 @@ function parseDataSesurb(valor) {
     numero > 20000 &&
     numero < 70000
   ) {
+
     const base = new Date(1899, 11, 30);
 
     base.setDate(
@@ -904,29 +907,7 @@ function parseDataSesurb(valor) {
     );
   }
 
-  const texto = String(valor).trim();
-
-  const match = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-
-  if (!match) return null;
-
-  const dia = Number(match[1]);
-  const mes = Number(match[2]);
-  let ano = Number(match[3]);
-
-  if (ano < 100) ano += 2000;
-
-  const data = new Date(ano, mes - 1, dia);
-
-  if (
-    data.getFullYear() !== ano ||
-    data.getMonth() !== mes - 1 ||
-    data.getDate() !== dia
-  ) {
-    return null;
-  }
-
-  return data;
+  return parseData(valor);
 }
 
 function prazoInclusivo(inicio, fim) {
@@ -972,61 +953,106 @@ function processarServicoSesurb(
   chaveServico
 ) {
 
-  const cfg = SESURB_SERVICOS[chaveServico];
+  const cfg =
+    SESURB_SERVICOS[chaveServico];
 
-  const dados = linhas.slice(2);
+  const idxCabecalho = 1;
+
+  const cabecalho =
+    linhas[idxCabecalho] || [];
+
+  const dados =
+    linhas.slice(idxCabecalho + 1);
+
+  const colData = indiceSesurb(
+    cabecalho,
+    cfg.campoData,
+    0
+  );
+
+  const colInicio = indiceSesurb(
+    cabecalho,
+    cfg.campoInicio,
+    -1
+  );
+
+  const colFim = indiceSesurb(
+    cabecalho,
+    cfg.campoFim,
+    -1
+  );
+
+  const colVia = indiceSesurb(
+    cabecalho,
+    cfg.campoVia,
+    0
+  );
+
+  const colBairro = indiceSesurb(
+    cabecalho,
+    cfg.campoBairro,
+    -1
+  );
+
+  const colMedida = indiceSesurb(
+    cabecalho,
+    cfg.campoMedida,
+    -1
+  );
 
   return dados
     .map(linha => {
 
-      const data = parseDataSesurb(linha[cfg.colData]);
+      const data =
+        parseDataSesurb(linha[colData]);
 
       if (!data) return null;
 
-      if (data.getFullYear() !== CONFIG.anoBase) {
+      if (
+        data.getFullYear() !== CONFIG.anoBase
+      ) {
         return null;
       }
 
-      const inicio =
-        cfg.colInicio >= 0
-          ? parseDataSesurb(linha[cfg.colInicio])
-          : null;
-
-      const fim =
-        cfg.colFim >= 0
-          ? parseDataSesurb(linha[cfg.colFim])
-          : null;
-
-      let prazo = 1;
+      let prazo = null;
 
       if (
-        cfg.colInicio >= 0 &&
-        cfg.colFim >= 0
+        colInicio >= 0 &&
+        colFim >= 0
       ) {
+
         prazo = prazoInclusivo(
-          inicio,
-          fim
+          parseDataSesurb(linha[colInicio]),
+          parseDataSesurb(linha[colFim])
         );
+
+      } else {
+
+        prazo = 1;
       }
 
       return {
         servico: chaveServico,
         data,
-        inicio,
-        fim,
         mes: chaveMes(data),
 
         via: String(
-          linha[cfg.colVia] || ''
+          linha[colVia] || ''
         ).trim(),
 
-        bairro: String(
-          linha[cfg.colBairro] || ''
-        ).trim(),
+        bairro:
+          colBairro >= 0
+            ? String(
+                linha[colBairro] || ''
+              ).trim()
+            : '',
 
-        quantidade: parseNumeroSesurb(
-          linha[cfg.colMedida]
-        ),
+        quantidade:
+          colMedida >= 0
+            ? parseNumero(
+                linha[colMedida]
+              )
+            : 0,
 
         prazo
       };
@@ -1182,69 +1208,12 @@ function renderSesurbPrazoMedio() {
 
 function renderGraficoSesurbDiario() {
 
-  const servico =
-    $('sesurbService')?.value ||
-    'capinaManual';
-
   const dados =
     dadosSesurbPeriodo();
 
   const mapa = new Map();
 
   dados.forEach(item => {
-
-    if (servico === 'capinaManual') {
-
-      const inicio =
-        item.inicio || item.data;
-
-      const fim =
-        item.fim || item.data;
-
-      if (!inicio || !fim || fim < inicio) {
-        return;
-      }
-
-      const totalDias =
-        Math.max(
-          1,
-          Math.floor((fim - inicio) / 86400000) + 1
-        );
-
-      const mediaDiaria =
-        item.quantidade / totalDias;
-
-      const dataAtual =
-        new Date(
-          inicio.getFullYear(),
-          inicio.getMonth(),
-          inicio.getDate()
-        );
-
-      const dataFinal =
-        new Date(
-          fim.getFullYear(),
-          fim.getMonth(),
-          fim.getDate()
-        );
-
-      while (dataAtual <= dataFinal) {
-
-        const chave =
-          chaveDia(dataAtual);
-
-        mapa.set(
-          chave,
-          (mapa.get(chave) || 0) + mediaDiaria
-        );
-
-        dataAtual.setDate(
-          dataAtual.getDate() + 1
-        );
-      }
-
-      return;
-    }
 
     const chave =
       chaveDia(item.data);
@@ -1266,24 +1235,10 @@ function renderGraficoSesurbDiario() {
 
   if (mesSelecionado === 'todos') {
 
-    let datas = [];
-
-    if (servico === 'capinaManual') {
-
-      dados.forEach(item => {
-        if (item.inicio) datas.push(item.inicio);
-        if (item.fim) datas.push(item.fim);
-        if (!item.inicio && item.data) datas.push(item.data);
-      });
-
-    } else {
-
-      datas =
-        dados.map(item => item.data);
-    }
-
-    datas =
-      datas.sort((a, b) => a - b);
+    const datas =
+      dados
+        .map(item => item.data)
+        .sort((a, b) => a - b);
 
     if (datas.length) {
 
@@ -1511,6 +1466,102 @@ function rankingSesurb(campo) {
     .slice(0, 10);
 }
 
+function renderMediaDiariaSesurb() {
+
+  const el =
+    $('sesurbMediaDiaria');
+
+  if (!el) return;
+
+  const dados =
+    dadosSesurbPeriodo();
+
+  const servico =
+    $('sesurbService')?.value ||
+    'capinaManual';
+
+  if (!dados.length) {
+    el.textContent = 'Média diária: -';
+    return;
+  }
+
+  let totalProducao = 0;
+  let diasProdutivos = 0;
+
+  if (servico === 'capinaManual') {
+
+    const dias = new Set();
+
+    dados.forEach(item => {
+
+      totalProducao += item.quantidade;
+
+      const inicio =
+        item.inicio || item.data;
+
+      const fim =
+        item.fim || item.data;
+
+      if (!inicio || !fim || fim < inicio) {
+        return;
+      }
+
+      const dataAtual =
+        new Date(
+          inicio.getFullYear(),
+          inicio.getMonth(),
+          inicio.getDate()
+        );
+
+      const dataFinal =
+        new Date(
+          fim.getFullYear(),
+          fim.getMonth(),
+          fim.getDate()
+        );
+
+      while (dataAtual <= dataFinal) {
+
+        dias.add(
+          chaveDia(dataAtual)
+        );
+
+        dataAtual.setDate(
+          dataAtual.getDate() + 1
+        );
+      }
+    });
+
+    diasProdutivos = dias.size;
+
+  } else {
+
+    const dias = new Set();
+
+    dados.forEach(item => {
+
+      totalProducao += item.quantidade;
+
+      dias.add(
+        chaveDia(item.data)
+      );
+    });
+
+    diasProdutivos = dias.size;
+  }
+
+  const media =
+    diasProdutivos > 0
+      ? totalProducao / diasProdutivos
+      : 0;
+
+  const unidade =
+    SESURB_SERVICOS[servico]?.unidade || '';
+
+  el.textContent =
+    `Média diária: ${formatNumber(media, 2)} ${unidade}/dia`;
+}
+
 function renderSesurb() {
 
   renderSesurbTotal();
@@ -1521,10 +1572,7 @@ function renderSesurb() {
 
   renderGraficoSesurbPrazos();
 
-  renderRanking(
-    'rankSesurbBairros',
-    rankingSesurb('bairro')
-  );
+  renderMediaDiariaSesurb();
 }
 
 function trocarServicoSesurb() {
