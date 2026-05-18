@@ -769,10 +769,21 @@ function renderNecessidadeSettran() {
   const diferenca =
     Math.max(0, necessidade - producao);
 
-  const equipes =
-    diferenca > 0
-      ? Math.ceil(diferenca / 150)
-      : 0;
+  const producaoDiariaEquipe = 150;
+
+const diasUteisMes = 21;
+
+const capacidadeMensalEquipe =
+  producaoDiariaEquipe *
+  diasUteisMes;
+
+const equipes =
+  diferenca > 0
+    ? Math.ceil(
+        diferenca /
+        capacidadeMensalEquipe
+      )
+    : 0;
 
   const necessidadeEl =
     $('settranNecessidadeResultado');
