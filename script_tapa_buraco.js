@@ -815,7 +815,7 @@ const SESURB_SERVICOS = {
     colFim: 8,
     colVia: 3,
     colBairro: 2,
-    colMedida: 14
+    colMedida: 10
   },
 
   capinaEletrica: {
@@ -967,6 +967,16 @@ function processarServicoSesurb(
         return null;
       }
 
+      const inicio =
+        cfg.colInicio >= 0
+          ? parseDataSesurb(linha[cfg.colInicio])
+          : null;
+
+      const fim =
+        cfg.colFim >= 0
+          ? parseDataSesurb(linha[cfg.colFim])
+          : null;
+
       let prazo = 1;
 
       if (
@@ -974,14 +984,16 @@ function processarServicoSesurb(
         cfg.colFim >= 0
       ) {
         prazo = prazoInclusivo(
-          parseDataSesurb(linha[cfg.colInicio]),
-          parseDataSesurb(linha[cfg.colFim])
+          inicio,
+          fim
         );
       }
 
       return {
         servico: chaveServico,
         data,
+        inicio,
+        fim,
         mes: chaveMes(data),
 
         via: String(
@@ -1149,12 +1161,69 @@ function renderSesurbPrazoMedio() {
 
 function renderGraficoSesurbDiario() {
 
+  const servico =
+    $('sesurbService')?.value ||
+    'capinaManual';
+
   const dados =
     dadosSesurbPeriodo();
 
   const mapa = new Map();
 
   dados.forEach(item => {
+
+    if (servico === 'capinaManual') {
+
+      const inicio =
+        item.inicio || item.data;
+
+      const fim =
+        item.fim || item.data;
+
+      if (!inicio || !fim || fim < inicio) {
+        return;
+      }
+
+      const totalDias =
+        Math.max(
+          1,
+          Math.floor((fim - inicio) / 86400000) + 1
+        );
+
+      const mediaDiaria =
+        item.quantidade / totalDias;
+
+      const dataAtual =
+        new Date(
+          inicio.getFullYear(),
+          inicio.getMonth(),
+          inicio.getDate()
+        );
+
+      const dataFinal =
+        new Date(
+          fim.getFullYear(),
+          fim.getMonth(),
+          fim.getDate()
+        );
+
+      while (dataAtual <= dataFinal) {
+
+        const chave =
+          chaveDia(dataAtual);
+
+        mapa.set(
+          chave,
+          (mapa.get(chave) || 0) + mediaDiaria
+        );
+
+        dataAtual.setDate(
+          dataAtual.getDate() + 1
+        );
+      }
+
+      return;
+    }
 
     const chave =
       chaveDia(item.data);
@@ -1176,10 +1245,30 @@ function renderGraficoSesurbDiario() {
 
   if (mesSelecionado === 'todos') {
 
-    const datas =
-      dados
-        .map(item => item.data)
-        .sort((a, b) => a - b);
+    let datas = [];
+
+    if (servico === 'capinaManual') {
+
+      dados.forEach(item => {
+
+        if (item.inicio) datas.push(item.inicio);
+
+        if (item.fim) datas.push(item.fim);
+
+        if (!item.inicio && item.data) {
+          datas.push(item.data);
+        }
+
+      });
+
+    } else {
+
+      datas =
+        dados.map(item => item.data);
+    }
+
+    datas =
+      datas.sort((a, b) => a - b);
 
     if (datas.length) {
 
