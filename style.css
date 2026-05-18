@@ -319,3 +319,11 @@ td:last-child, th:last-child { text-align: right; }
 .sesurb-ranking-grid {
   grid-template-columns: 1fr;
 }
+
+
+.chart-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
