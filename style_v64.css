@@ -319,3 +319,6 @@ td:last-child, th:last-child { text-align: right; }
 .sesurb-ranking-grid {
   grid-template-columns: 1fr;
 }
+.sesurb-ranking-grid {
+  grid-template-columns: 1fr;
+}
