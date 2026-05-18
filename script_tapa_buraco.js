@@ -828,51 +828,79 @@ function renderSettran() {
   capinaManual: {
     nome: 'Capina manual + roçagem mecanizada',
     unidade: 'm²',
-    campoData: ['DT. DA CONCLUSÃO', 'CONCLUSÃO', 'DT CONCLUSÃO'],
-    campoInicio: ['INÍCIO', 'INICIO'],
-    campoFim: ['DT. DA CONCLUSÃO', 'CONCLUSÃO', 'DT CONCLUSÃO'],
-    campoVia: ['LOGRADOURO'],
-    campoBairro: ['BAIRRO'],
-    campoMedida: ['MEDIDA TOTAL'],
-    urlKey: 'capinaManual'
+    colData: 8,
+    colInicio: 6,
+    colFim: 8,
+    colMedida: 10,
+    usaIntervalo: true
   },
 
   capinaEletrica: {
     nome: 'Capina elétrica',
     unidade: 'm',
-    campoData: ['DATA EXECUÇÃO', 'DATA EXECUCAO', 'DATA'],
-    campoInicio: null,
-    campoFim: null,
-    campoVia: ['LOCAL', 'AVENIDAS', 'RUAS'],
-    campoBairro: ['BAIRRO'],
-    campoMedida: ['MEDIDA TOTAL'],
-    urlKey: 'capinaEletrica'
+    colData: 2,
+    colInicio: -1,
+    colFim: -1,
+    colMedida: 10,
+    usaIntervalo: false
   },
 
   drenagem: {
     nome: 'Limpeza de drenagem',
-    unidade: 'BL',
-    campoData: ['DATA'],
-    campoInicio: null,
-    campoFim: null,
-    campoVia: ['LOCALIZAÇÃO', 'LOCALIZACAO'],
-    campoBairro: ['BAIRRO'],
-    campoMedida: ['QUANTIDADES', 'QUANTIDADE'],
-    urlKey: 'drenagem'
+    unidade: 'un.',
+    colData: 0,
+    colInicio: -1,
+    colFim: -1,
+    colMedida: 9,
+    usaIntervalo: false
   },
 
   sarjeta: {
     nome: 'Pintura de sarjeta',
     unidade: 'm',
-    campoData: ['DT. DA CONCLUSÃO', 'CONCLUSÃO', 'DT CONCLUSÃO'],
-    campoInicio: ['INICIO', 'INÍCIO'],
-    campoFim: ['DT. DA CONCLUSÃO', 'CONCLUSÃO', 'DT CONCLUSÃO'],
-    campoVia: ['LOGRADOURO'],
-    campoBairro: ['BAIRRO'],
-    campoMedida: ['MEDIDA'],
-    urlKey: 'sarjeta'
+    colData: 7,
+    colInicio: 5,
+    colFim: 7,
+    colMedida: 9,
+    usaIntervalo: true
   }
 };
+
+
+function parseDataBR(valor) {
+
+  if (
+    valor === null ||
+    valor === undefined ||
+    valor === ''
+  ) {
+    return null;
+  }
+
+  const texto = String(valor).trim();
+
+  const match = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+
+  if (!match) return null;
+
+  const dia = Number(match[1]);
+  const mes = Number(match[2]);
+  let ano = Number(match[3]);
+
+  if (ano < 100) ano += 2000;
+
+  const data = new Date(ano, mes - 1, dia);
+
+  if (
+    data.getFullYear() !== ano ||
+    data.getMonth() !== mes - 1 ||
+    data.getDate() !== dia
+  ) {
+    return null;
+  }
+
+  return data;
+}
 
 function parseDataSesurb(valor) {
 
@@ -907,7 +935,7 @@ function parseDataSesurb(valor) {
     );
   }
 
-  return parseData(valor);
+  return parseDataBR(valor);
 }
 
 function prazoInclusivo(inicio, fim) {
@@ -956,55 +984,14 @@ function processarServicoSesurb(
   const cfg =
     SESURB_SERVICOS[chaveServico];
 
-  const idxCabecalho = 1;
-
-  const cabecalho =
-    linhas[idxCabecalho] || [];
-
   const dados =
-    linhas.slice(idxCabecalho + 1);
-
-  const colData = indiceSesurb(
-    cabecalho,
-    cfg.campoData,
-    0
-  );
-
-  const colInicio = indiceSesurb(
-    cabecalho,
-    cfg.campoInicio,
-    -1
-  );
-
-  const colFim = indiceSesurb(
-    cabecalho,
-    cfg.campoFim,
-    -1
-  );
-
-  const colVia = indiceSesurb(
-    cabecalho,
-    cfg.campoVia,
-    0
-  );
-
-  const colBairro = indiceSesurb(
-    cabecalho,
-    cfg.campoBairro,
-    -1
-  );
-
-  const colMedida = indiceSesurb(
-    cabecalho,
-    cfg.campoMedida,
-    -1
-  );
+    linhas.slice(2);
 
   return dados
     .map(linha => {
 
       const data =
-        parseDataSesurb(linha[colData]);
+        parseDataSesurb(linha[cfg.colData]);
 
       if (!data) return null;
 
@@ -1014,51 +1001,55 @@ function processarServicoSesurb(
         return null;
       }
 
-      let prazo = null;
+      const inicio =
+        cfg.colInicio >= 0
+          ? parseDataSesurb(linha[cfg.colInicio])
+          : data;
+
+      const fim =
+        cfg.colFim >= 0
+          ? parseDataSesurb(linha[cfg.colFim])
+          : data;
+
+      const dataInicio =
+        inicio || data;
+
+      const dataFim =
+        fim || data;
+
+      const prazo =
+        cfg.usaIntervalo
+          ? prazoInclusivo(dataInicio, dataFim)
+          : 1;
 
       if (
-        colInicio >= 0 &&
-        colFim >= 0
+        !dataInicio ||
+        !dataFim ||
+        dataFim < dataInicio
       ) {
-
-        prazo = prazoInclusivo(
-          parseDataSesurb(linha[colInicio]),
-          parseDataSesurb(linha[colFim])
-        );
-
-      } else {
-
-        prazo = 1;
+        return null;
       }
 
       return {
         servico: chaveServico,
         data,
+        inicio: dataInicio,
+        fim: dataFim,
         mes: chaveMes(data),
 
-        via: String(
-          linha[colVia] || ''
-        ).trim(),
+        quantidade: parseNumeroSesurb(
+          linha[cfg.colMedida]
+        ),
 
-        bairro:
-          colBairro >= 0
-            ? String(
-                linha[colBairro] || ''
-              ).trim()
-            : '',
-
-        quantidade:
-          colMedida >= 0
-            ? parseNumero(
-                linha[colMedida]
-              )
-            : 0,
-
-        prazo
+        prazo: prazo || 1
       };
 
     })
-    .filter(Boolean);
+    .filter(item =>
+      item &&
+      Number.isFinite(item.quantidade) &&
+      item.quantidade > 0
+    );
 }
 
 function preencherSelectSesurbServico() {
@@ -1148,6 +1139,48 @@ function dadosSesurbPeriodo() {
   );
 }
 
+function intervaloRealSesurb(dados) {
+
+  const datas = [];
+
+  dados.forEach(item => {
+    if (item.inicio) datas.push(item.inicio);
+    if (item.fim) datas.push(item.fim);
+    if (!item.inicio && item.data) datas.push(item.data);
+  });
+
+  if (!datas.length) {
+    return null;
+  }
+
+  datas.sort((a, b) => a - b);
+
+  return {
+    inicio: new Date(
+      datas[0].getFullYear(),
+      datas[0].getMonth(),
+      datas[0].getDate()
+    ),
+
+    fim: new Date(
+      datas[datas.length - 1].getFullYear(),
+      datas[datas.length - 1].getMonth(),
+      datas[datas.length - 1].getDate()
+    )
+  };
+}
+
+function diasEntreInclusivo(inicio, fim) {
+
+  if (!inicio || !fim || fim < inicio) {
+    return 0;
+  }
+
+  return Math.floor(
+    (fim - inicio) / 86400000
+  ) + 1;
+}
+
 function renderSesurbTotal() {
 
   const servico =
@@ -1215,98 +1248,84 @@ function renderGraficoSesurbDiario() {
 
   dados.forEach(item => {
 
-    const chave =
-      chaveDia(item.data);
+    const totalDias =
+      diasEntreInclusivo(
+        item.inicio,
+        item.fim
+      ) || 1;
 
-    mapa.set(
-      chave,
-      (mapa.get(chave) || 0) +
-        item.quantidade
-    );
+    const producaoDiaria =
+      item.quantidade / totalDias;
 
+    const dataAtual =
+      new Date(
+        item.inicio.getFullYear(),
+        item.inicio.getMonth(),
+        item.inicio.getDate()
+      );
+
+    const dataFinal =
+      new Date(
+        item.fim.getFullYear(),
+        item.fim.getMonth(),
+        item.fim.getDate()
+      );
+
+    while (dataAtual <= dataFinal) {
+
+      const chave =
+        chaveDia(dataAtual);
+
+      mapa.set(
+        chave,
+        (mapa.get(chave) || 0) +
+          producaoDiaria
+      );
+
+      dataAtual.setDate(
+        dataAtual.getDate() + 1
+      );
+    }
   });
 
   const labels = [];
   const valores = [];
 
-  const mesSelecionado =
-    $('sesurbMonth')?.value ||
-    'todos';
+  const intervalo =
+    intervaloRealSesurb(dados);
 
-  if (mesSelecionado === 'todos') {
+  if (intervalo) {
 
-    const datas =
-      dados
-        .map(item => item.data)
-        .sort((a, b) => a - b);
+    const dataAtual =
+      new Date(
+        intervalo.inicio.getFullYear(),
+        intervalo.inicio.getMonth(),
+        intervalo.inicio.getDate()
+      );
 
-    if (datas.length) {
+    const dataFinal =
+      new Date(
+        intervalo.fim.getFullYear(),
+        intervalo.fim.getMonth(),
+        intervalo.fim.getDate()
+      );
 
-      let dataAtual =
-        new Date(
-          datas[0].getFullYear(),
-          datas[0].getMonth(),
-          datas[0].getDate()
-        );
-
-      const dataFinal =
-        new Date(
-          datas[datas.length - 1].getFullYear(),
-          datas[datas.length - 1].getMonth(),
-          datas[datas.length - 1].getDate()
-        );
-
-      while (
-        dataAtual <= dataFinal
-      ) {
-
-        labels.push(
-          `${String(dataAtual.getDate()).padStart(2, '0')}/${String(dataAtual.getMonth() + 1).padStart(2, '0')}`
-        );
-
-        valores.push(
-          mapa.get(
-            chaveDia(dataAtual)
-          ) || 0
-        );
-
-        dataAtual.setDate(
-          dataAtual.getDate() + 1
-        );
-      }
-    }
-
-  } else {
-
-    const [ano, mes] =
-      mesSelecionado
-        .split('-')
-        .map(Number);
-
-    const totalDias =
-      diasNoMes(ano, mes);
-
-    for (
-      let dia = 1;
-      dia <= totalDias;
-      dia++
+    while (
+      dataAtual <= dataFinal
     ) {
 
-      const data =
-        new Date(
-          ano,
-          mes - 1,
-          dia
-        );
-
       labels.push(
-        String(dia).padStart(2, '0')
+        `${String(dataAtual.getDate()).padStart(2, '0')}/${String(dataAtual.getMonth() + 1).padStart(2, '0')}`
       );
 
       valores.push(
         mapa.get(
-          chaveDia(data)
+          chaveDia(dataAtual)
         ) || 0
+      );
+
+      dataAtual.setDate(
+        dataAtual.getDate() + 1
       );
     }
   }
@@ -1485,74 +1504,27 @@ function renderMediaDiariaSesurb() {
     return;
   }
 
-  let totalProducao = 0;
-  let diasProdutivos = 0;
+  const totalProducao =
+    dados.reduce(
+      (soma, item) =>
+        soma + item.quantidade,
+      0
+    );
 
-  if (servico === 'capinaManual') {
+  const intervalo =
+    intervaloRealSesurb(dados);
 
-    const dias = new Set();
-
-    dados.forEach(item => {
-
-      totalProducao += item.quantidade;
-
-      const inicio =
-        item.inicio || item.data;
-
-      const fim =
-        item.fim || item.data;
-
-      if (!inicio || !fim || fim < inicio) {
-        return;
-      }
-
-      const dataAtual =
-        new Date(
-          inicio.getFullYear(),
-          inicio.getMonth(),
-          inicio.getDate()
-        );
-
-      const dataFinal =
-        new Date(
-          fim.getFullYear(),
-          fim.getMonth(),
-          fim.getDate()
-        );
-
-      while (dataAtual <= dataFinal) {
-
-        dias.add(
-          chaveDia(dataAtual)
-        );
-
-        dataAtual.setDate(
-          dataAtual.getDate() + 1
-        );
-      }
-    });
-
-    diasProdutivos = dias.size;
-
-  } else {
-
-    const dias = new Set();
-
-    dados.forEach(item => {
-
-      totalProducao += item.quantidade;
-
-      dias.add(
-        chaveDia(item.data)
-      );
-    });
-
-    diasProdutivos = dias.size;
-  }
+  const diasGap =
+    intervalo
+      ? diasEntreInclusivo(
+          intervalo.inicio,
+          intervalo.fim
+        )
+      : 0;
 
   const media =
-    diasProdutivos > 0
-      ? totalProducao / diasProdutivos
+    diasGap > 0
+      ? totalProducao / diasGap
       : 0;
 
   const unidade =
