@@ -112,6 +112,26 @@ function parseNumero(valor) {
   return Number.isFinite(numero) ? numero : 0;
 }
 
+function parseNumeroSesurb(valor) {
+  let texto = String(valor ?? '').trim();
+
+  if (!texto || texto === '-') return 0;
+
+  texto = texto.replace(/\s/g, '').replace(/[^0-9,.-]/g, '');
+
+  if (!texto) return 0;
+
+  if (texto.includes(',') && texto.includes('.')) {
+    texto = texto.replace(/\./g, '').replace(',', '.');
+  } else if (texto.includes(',') && !texto.includes('.')) {
+    texto = texto.replace(',', '.');
+  }
+
+  const numero = Number(texto);
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+
 function normalizarTexto(valor) {
   return String(valor ?? '')
     .normalize('NFD')
@@ -1004,7 +1024,7 @@ function processarServicoSesurb(
           linha[cfg.colBairro] || ''
         ).trim(),
 
-        quantidade: parseNumero(
+        quantidade: parseNumeroSesurb(
           linha[cfg.colMedida]
         ),
 
@@ -1014,6 +1034,7 @@ function processarServicoSesurb(
     })
     .filter(Boolean);
 }
+
 function preencherSelectSesurbServico() {
 
   const select =
@@ -1250,15 +1271,9 @@ function renderGraficoSesurbDiario() {
     if (servico === 'capinaManual') {
 
       dados.forEach(item => {
-
         if (item.inicio) datas.push(item.inicio);
-
         if (item.fim) datas.push(item.fim);
-
-        if (!item.inicio && item.data) {
-          datas.push(item.data);
-        }
-
+        if (!item.inicio && item.data) datas.push(item.data);
       });
 
     } else {
@@ -1505,11 +1520,6 @@ function renderSesurb() {
   renderGraficoSesurbDiario();
 
   renderGraficoSesurbPrazos();
-
-  renderRanking(
-    'rankSesurbVias',
-    rankingSesurb('via')
-  );
 
   renderRanking(
     'rankSesurbBairros',
