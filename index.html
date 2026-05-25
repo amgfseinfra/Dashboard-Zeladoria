@@ -109,7 +109,8 @@
       </section>
     </section>
 
- <section id="panel-settran" class="panel">
+ 
+<section id="panel-settran" class="panel">
   <section class="filters card">
     <label for="settranMonth">
       Mês de referência
@@ -139,16 +140,41 @@
           m²/km
           <input id="settranIndice" type="number" min="0" step="1" value="1350" />
         </label>
+
+        <label>
+          Periodicidade (meses)
+          <input id="settranPeriodicidade" type="number" min="1" step="1" value="6" />
+        </label>
+
+        <label>
+          Dias úteis/mês
+          <input id="settranDiasUteis" type="number" min="1" step="1" value="21" />
+        </label>
       </div>
 
-      <strong id="settranNecessidadeResultado">0,00 m²</strong>
-      <small id="settranAnaliseEquipe" class="analysis-note">Informe a quilometragem para analisar a equipe.</small>
+      <strong id="settranNecessidadeResultado">0,00 m²/mês</strong>
+
+      <small id="settranAnaliseEquipe" class="analysis-note">
+        Informe a quilometragem para analisar a equipe.
+      </small>
     </article>
 
     <article class="card kpi">
       <span>Produção média por equipe</span>
-      <strong>150 m²</strong>
-      <small>Base usada para estimar reforço necessário</small>
+
+      <input
+        id="settranEquipeProd"
+        type="number"
+        min="1"
+        step="1"
+        value="150"
+      />
+
+      <strong id="settranEquipeValor">150 m²/dia</strong>
+
+      <small id="settranMediaReal">
+        Média do período selecionado: -
+      </small>
     </article>
   </section>
 
@@ -164,7 +190,8 @@
   </section>
 </section>
 
-   <section id="panel-sesurb" class="panel">
+   <section id="panel-sesurb"
+ class="panel">
   <section class="filters card">
     <label for="sesurbService">
       Serviço
