@@ -758,32 +758,36 @@ function renderNecessidadeSettran() {
     $('settranIndice')?.value || 1350
   );
 
-  const mesSelecionado =
-    $('settranMonth')?.value || 'todos';
+  const periodicidade = parseNumero(
+    $('settranPeriodicidade')?.value || 6
+  );
 
-  const producao =
-    totalSettranPeriodo(mesSelecionado);
+  const diasUteis = parseNumero(
+    $('settranDiasUteis')?.value || 21
+  );
 
-  const necessidade = km * indice;
+  const producaoEquipe = parseNumero(
+    $('settranEquipeProd')?.value || 150
+  );
 
-  const diferenca =
-    Math.max(0, necessidade - producao);
+  const necessidadeCiclo =
+    km * indice;
 
-  const producaoDiariaEquipe = 150;
+  const demandaMensal =
+    periodicidade > 0
+      ? necessidadeCiclo / periodicidade
+      : 0;
 
-const diasUteisMes = 21;
+  const capacidadeMensalEquipe =
+    producaoEquipe * diasUteis;
 
-const capacidadeMensalEquipe =
-  producaoDiariaEquipe *
-  diasUteisMes;
-
-const equipes =
-  diferenca > 0
-    ? Math.ceil(
-        diferenca /
-        capacidadeMensalEquipe
-      )
-    : 0;
+  const equipes =
+    capacidadeMensalEquipe > 0
+      ? Math.ceil(
+          demandaMensal /
+          capacidadeMensalEquipe
+        )
+      : 0;
 
   const necessidadeEl =
     $('settranNecessidadeResultado');
@@ -791,10 +795,51 @@ const equipes =
   const analiseEl =
     $('settranAnaliseEquipe');
 
+  const equipeValorEl =
+    $('settranEquipeValor');
+
+  const mediaRealEl =
+    $('settranMediaReal');
+
   if (necessidadeEl) {
 
     necessidadeEl.textContent =
-      `${formatNumber(necessidade, 2)} m²`;
+      `${formatNumber(demandaMensal, 2)} m²/mês`;
+  }
+
+  if (equipeValorEl) {
+
+    equipeValorEl.textContent =
+      `${formatNumber(producaoEquipe, 0)} m²/dia`;
+  }
+
+  const mesSelecionado =
+    $('settranMonth')?.value || 'todos';
+
+  const dados =
+    dadosSettranDoPeriodo(mesSelecionado);
+
+  const diasComProducao =
+    dados.filter(item =>
+      item.producao > 0
+    ).length;
+
+  const totalPeriodo =
+    dados.reduce(
+      (soma, item) =>
+        soma + item.producao,
+      0
+    );
+
+  const mediaReal =
+    diasComProducao > 0
+      ? totalPeriodo / diasComProducao
+      : 0;
+
+  if (mediaRealEl) {
+
+    mediaRealEl.textContent =
+      `Média do período selecionado: ${formatNumber(mediaReal, 2)} m²/dia`;
   }
 
   if (analiseEl) {
@@ -807,18 +852,10 @@ const equipes =
       analiseEl.className =
         'analysis-note';
 
-    } else if (diferenca > 0) {
-
-      analiseEl.textContent =
-        `Equipe subdimensionada. Déficit de ${formatNumber(diferenca, 2)} m². Aumentar ${equipes} equipe(s).`;
-
-      analiseEl.className =
-        'analysis-note alert';
-
     } else {
 
       analiseEl.textContent =
-        'Produção compatível com a necessidade informada.';
+        `Demanda mensal estimada: ${formatNumber(demandaMensal, 2)} m²/mês. Capacidade por equipe: ${formatNumber(capacidadeMensalEquipe, 2)} m²/mês. Necessárias: ${equipes} equipe(s).`;
 
       analiseEl.className =
         'analysis-note ok';
@@ -1655,6 +1692,34 @@ function configurarEventos() {
         renderNecessidadeSettran
       );
   }
+
+  if ($('settranPeriodicidade')) {
+
+    $('settranPeriodicidade')
+      .addEventListener(
+        'input',
+        renderNecessidadeSettran
+      );
+  }
+
+  if ($('settranDiasUteis')) {
+
+    $('settranDiasUteis')
+      .addEventListener(
+        'input',
+        renderNecessidadeSettran
+      );
+  }
+
+  if ($('settranEquipeProd')) {
+
+    $('settranEquipeProd')
+      .addEventListener(
+        'input',
+        renderNecessidadeSettran
+      );
+  }
+
 
   if ($('sesurbService')) {
 
