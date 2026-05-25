@@ -770,6 +770,10 @@ function renderNecessidadeSettran() {
     $('settranEquipeProd')?.value || 150
   );
 
+  const qtdEquipes = parseNumero(
+    $('settranQtdEquipes')?.value || 1
+  );
+
   const necessidadeCiclo =
     km * indice;
 
@@ -781,13 +785,22 @@ function renderNecessidadeSettran() {
   const capacidadeMensalEquipe =
     producaoEquipe * diasUteis;
 
-  const equipes =
+  const capacidadeMensalTotal =
+    capacidadeMensalEquipe * qtdEquipes;
+
+  const equipesNecessarias =
     capacidadeMensalEquipe > 0
       ? Math.ceil(
           demandaMensal /
           capacidadeMensalEquipe
         )
       : 0;
+
+  const equipesAumentar =
+    Math.max(
+      0,
+      equipesNecessarias - qtdEquipes
+    );
 
   const necessidadeEl =
     $('settranNecessidadeResultado');
@@ -800,6 +813,9 @@ function renderNecessidadeSettran() {
 
   const mediaRealEl =
     $('settranMediaReal');
+
+  const analiseCapacidadeEl =
+    $('settranAnaliseCapacidade');
 
   if (necessidadeEl) {
 
@@ -855,9 +871,37 @@ function renderNecessidadeSettran() {
     } else {
 
       analiseEl.textContent =
-        `Demanda mensal estimada: ${formatNumber(demandaMensal, 2)} m²/mês. Capacidade por equipe: ${formatNumber(capacidadeMensalEquipe, 2)} m²/mês. Necessárias: ${equipes} equipe(s).`;
+        `Demanda mensal estimada: ${formatNumber(demandaMensal, 2)} m²/mês. Capacidade por equipe: ${formatNumber(capacidadeMensalEquipe, 2)} m²/mês. Equipes necessárias: ${equipesNecessarias}.`;
 
       analiseEl.className =
+        'analysis-note ok';
+    }
+  }
+
+  if (analiseCapacidadeEl) {
+
+    if (!km) {
+
+      analiseCapacidadeEl.textContent =
+        'Informe a quilometragem para analisar a capacidade.';
+
+      analiseCapacidadeEl.className =
+        'analysis-note';
+
+    } else if (capacidadeMensalTotal < demandaMensal) {
+
+      analiseCapacidadeEl.textContent =
+        `Equipe subdimensionada. Capacidade atual: ${formatNumber(capacidadeMensalTotal, 2)} m²/mês. Aumentar ${equipesAumentar} equipe(s).`;
+
+      analiseCapacidadeEl.className =
+        'analysis-note alert';
+
+    } else {
+
+      analiseCapacidadeEl.textContent =
+        `Equipe compatível. Capacidade atual: ${formatNumber(capacidadeMensalTotal, 2)} m²/mês.`;
+
+      analiseCapacidadeEl.className =
         'analysis-note ok';
     }
   }
@@ -1714,6 +1758,15 @@ function configurarEventos() {
   if ($('settranEquipeProd')) {
 
     $('settranEquipeProd')
+      .addEventListener(
+        'input',
+        renderNecessidadeSettran
+      );
+  }
+
+  if ($('settranQtdEquipes')) {
+
+    $('settranQtdEquipes')
       .addEventListener(
         'input',
         renderNecessidadeSettran
