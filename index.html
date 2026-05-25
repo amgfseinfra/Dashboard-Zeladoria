@@ -162,18 +162,38 @@
     <article class="card kpi">
       <span>Produção média por equipe</span>
 
-      <input
-        id="settranEquipeProd"
-        type="number"
-        min="1"
-        step="1"
-        value="150"
-      />
+      <div class="mini-form">
+        <label>
+          Produção diária/equipe
+          <input
+            id="settranEquipeProd"
+            type="number"
+            min="1"
+            step="1"
+            value="150"
+          />
+        </label>
+
+        <label>
+          Quantidade de equipes
+          <input
+            id="settranQtdEquipes"
+            type="number"
+            min="1"
+            step="1"
+            value="1"
+          />
+        </label>
+      </div>
 
       <strong id="settranEquipeValor">150 m²/dia</strong>
 
       <small id="settranMediaReal">
         Média do período selecionado: -
+      </small>
+
+      <small id="settranAnaliseCapacidade" class="analysis-note">
+        Informe a quilometragem para analisar a capacidade.
       </small>
     </article>
   </section>
