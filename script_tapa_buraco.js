@@ -330,6 +330,101 @@ function renderKPIs(mesSelecionado) {
   $('tapaBuracos').textContent = formatNumber(resumo.buracos, 0);
 }
 
+function renderGraficoMensalTapaBuraco(mesSelecionado = 'todos') {
+  const canvas = $('chartTapaMensal');
+
+  if (!canvas) return;
+
+  const dadosBase = (state.resumo || [])
+    .slice()
+    .sort((a, b) => String(a.mes).localeCompare(String(b.mes)));
+
+  const dados = mesSelecionado === 'todos'
+    ? dadosBase
+    : dadosBase.filter(item => item.mes === mesSelecionado);
+
+  const labels = dados.map(item => {
+    const partes = String(item.mes || '').split('-');
+    const ano = partes[0] || CONFIG.anoBase;
+    const mes = Number(partes[1]);
+    const nomeMes = nomesMeses[mes - 1] || item.mes;
+
+    return `${String(nomeMes).toLowerCase()}, ${ano}`;
+  });
+
+  const tonelagens = dados.map(item => item.tonelagem || 0);
+  const buracos = dados.map(item => item.buracos || 0);
+
+  if (state.charts.tapaMensal) {
+    state.charts.tapaMensal.destroy();
+  }
+
+  state.charts.tapaMensal = new Chart(canvas, {
+    type: 'bar',
+
+    data: {
+      labels,
+
+      datasets: [{
+        label: 'TON TOTAL',
+        data: tonelagens,
+        backgroundColor: 'rgba(54, 99, 201, 0.85)',
+        borderColor: 'rgba(54, 99, 201, 1)',
+        borderWidth: 1
+      }, {
+        label: 'BURACO (QNT)',
+        data: buracos,
+        backgroundColor: 'rgba(239, 124, 43, 0.85)',
+        borderColor: 'rgba(239, 124, 43, 1)',
+        borderWidth: 1
+      }]
+    },
+
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+
+      plugins: {
+        legend: {
+          position: 'bottom'
+        },
+
+        tooltip: {
+          callbacks: {
+            label(context) {
+              const label = context.dataset.label || '';
+              const valor = context.parsed.y || 0;
+              const casas = label === 'BURACO (QNT)' ? 0 : 2;
+              const sufixo = label === 'TON TOTAL' ? ' t' : '';
+
+              return `${label}: ${formatNumber(valor, casas)}${sufixo}`;
+            }
+          }
+        }
+      },
+
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback(valor) {
+              return Number(valor || 0).toLocaleString('pt-BR');
+            }
+          }
+        },
+
+        x: {
+          ticks: {
+            autoSkip: false,
+            maxRotation: 0,
+            minRotation: 0
+          }
+        }
+      }
+    }
+  });
+}
+
 function renderGraficoDiario(mesSelecionado) {
   const dados = dadosDoPeriodo(mesSelecionado);
   const mapa = new Map();
@@ -423,98 +518,6 @@ function renderGraficoDiario(mesSelecionado) {
   });
 }
 
-function renderGraficoMensalTapaBuraco() {
-  const canvas = $('chartTapaMensal');
-
-  if (!canvas) return;
-
-  const dados = state.resumo
-    .slice()
-    .filter(item => item && item.mes)
-    .sort((a, b) => a.mes.localeCompare(b.mes));
-
-  const labels = dados.map(item => {
-    const [ano, mes] = item.mes.split('-').map(Number);
-    return `${nomesMeses[mes - 1].toLowerCase()}, ${ano}`;
-  });
-
-  const toneladas = dados.map(item => item.tonelagem);
-  const buracos = dados.map(item => item.buracos);
-
-  if (state.charts.tapaMensal) {
-    state.charts.tapaMensal.destroy();
-  }
-
-  state.charts.tapaMensal = new Chart(canvas, {
-    type: 'bar',
-
-    data: {
-      labels,
-
-      datasets: [
-        {
-          label: 'TON TOTAL',
-          data: toneladas,
-          backgroundColor: '#4472c4',
-          borderColor: '#4472c4',
-          borderWidth: 1
-        },
-        {
-          label: 'BURACO (QNT)',
-          data: buracos,
-          backgroundColor: '#ed7d31',
-          borderColor: '#ed7d31',
-          borderWidth: 1
-        }
-      ]
-    },
-
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-
-      plugins: {
-        legend: {
-          position: 'bottom'
-        },
-
-        tooltip: {
-          callbacks: {
-            label: contexto => {
-              const label = contexto.dataset.label || '';
-              const valor = contexto.parsed.y || 0;
-
-              const casas =
-                label === 'TON TOTAL'
-                  ? 2
-                  : 0;
-
-              return `${label}: ${formatNumber(valor, casas)}`;
-            }
-          }
-        }
-      },
-
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            callback: valor => formatNumber(valor, 0)
-          }
-        },
-
-        x: {
-          ticks: {
-            autoSkip: false,
-            maxRotation: 0,
-            minRotation: 0
-          }
-        }
-      }
-    }
-  });
-}
-
 function gerarRanking(campo, mesSelecionado) {
   const mapa = new Map();
 
@@ -563,13 +566,11 @@ function renderTudo() {
   const mesSelecionado = $('tapaMonth').value;
 
   renderKPIs(mesSelecionado);
+  renderGraficoMensalTapaBuraco(mesSelecionado);
   renderGraficoDiario(mesSelecionado);
-  renderGraficoMensalTapaBuraco();
   renderRanking('rankVias', gerarRanking('logradouro', mesSelecionado));
   renderRanking('rankBairros', gerarRanking('bairro', mesSelecionado));
-}
-
-function parseDataSettran(valor) {
+}function parseDataSettran(valor) {
   const texto = normalizarTexto(valor).replace(/\s/g, '');
   const match = texto.match(/^(\d{1,2})\/?([A-Z]{3})$/);
 
