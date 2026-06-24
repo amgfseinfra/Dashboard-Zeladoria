@@ -108,10 +108,29 @@ function parseNumero(valor) {
 
   if (!texto) return 0;
 
-  if (texto.includes(',') && texto.includes('.')) {
-    texto = texto.replace(/,/g, '');
-  } else if (texto.includes(',') && !texto.includes('.')) {
+  const temVirgula = texto.includes(',');
+  const temPonto = texto.includes('.');
+
+  if (temVirgula && temPonto) {
+    const ultimaVirgula = texto.lastIndexOf(',');
+    const ultimoPonto = texto.lastIndexOf('.');
+
+    if (ultimaVirgula > ultimoPonto) {
+      texto = texto.replace(/\./g, '').replace(',', '.');
+    } else {
+      texto = texto.replace(/,/g, '');
+    }
+  } else if (temVirgula) {
     texto = texto.replace(',', '.');
+  } else if (temPonto) {
+    const partes = texto.split('.');
+
+    if (partes.length > 2) {
+      const decimal = partes.pop();
+      texto = partes.join('') + '.' + decimal;
+    } else if (/^\d{1,3}\.\d{3}$/.test(texto)) {
+      texto = texto.replace(/\./g, '');
+    }
   }
 
   const numero = Number(texto);
@@ -145,20 +164,7 @@ function normalizarTexto(valor) {
     .toUpperCase();
 }
 
-function parseData(valor) {
-  if (!valor) return null;
-
-  const texto = String(valor).trim();
-  const match = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-
-  if (!match) return null;
-
-  const mes = Number(match[1]);
-  const dia = Number(match[2]);
-  let ano = Number(match[3]);
-
-  if (ano < 100) ano += 2000;
-
+function criarDataValida(ano, mes, dia) {
   const data = new Date(ano, mes - 1, dia);
 
   if (
@@ -172,14 +178,110 @@ function parseData(valor) {
   return data;
 }
 
+function parseData(valor) {
+  if (!valor) return null;
+
+  const texto = String(valor).trim();
+
+  const serial = Number(texto.replace(',', '.'));
+
+  if (
+    Number.isFinite(serial) &&
+    serial > 20000 &&
+    serial < 70000
+  ) {
+    const base = new Date(1899, 11, 30);
+    base.setDate(base.getDate() + Math.round(serial));
+
+    return new Date(
+      base.getFullYear(),
+      base.getMonth(),
+      base.getDate()
+    );
+  }
+
+  const match = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+
+  if (!match) return null;
+
+  const primeiro = Number(match[1]);
+  const segundo = Number(match[2]);
+  let ano = Number(match[3]);
+
+  if (ano < 100) ano += 2000;
+
+  const tentativas = [];
+
+  if (primeiro > 12) {
+    tentativas.push({ dia: primeiro, mes: segundo });
+  } else {
+    tentativas.push({ dia: segundo, mes: primeiro });
+  }
+
+  tentativas.push({ dia: primeiro, mes: segundo });
+  tentativas.push({ dia: segundo, mes: primeiro });
+
+  for (const tentativa of tentativas) {
+    const data = criarDataValida(
+      ano,
+      tentativa.mes,
+      tentativa.dia
+    );
+
+    if (data) return data;
+  }
+
+  return null;
+}
+
+function mesPorNomeResumo(valor) {
+  const texto = normalizarTexto(valor)
+    .replace(/[.]/g, '')
+    .replace(/[^A-Z]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!texto) return null;
+
+  const meses = [
+    ['JAN', 'JANEIRO'],
+    ['FEV', 'FEVEREIRO'],
+    ['MAR', 'MARCO', 'MARÇO'],
+    ['ABR', 'ABRIL'],
+    ['MAI', 'MAIO'],
+    ['JUN', 'JUNHO'],
+    ['JUL', 'JULHO'],
+    ['AGO', 'AGOSTO'],
+    ['SET', 'SETEMBRO'],
+    ['OUT', 'OUTUBRO'],
+    ['NOV', 'NOVEMBRO'],
+    ['DEZ', 'DEZEMBRO']
+  ];
+
+  for (let i = 0; i < meses.length; i++) {
+    if (meses[i].some(nome => texto.split(' ').includes(nome))) {
+      return i + 1;
+    }
+  }
+
+  return null;
+}
+
 function parseMesResumo(valor, anoReferencia = CONFIG.anoBase) {
-  const numero = Number(String(valor ?? '').trim());
+  const texto = String(valor ?? '').trim();
+  const numero = Number(texto.replace(',', '.'));
 
   if (Number.isFinite(numero) && numero >= 1 && numero <= 12) {
     return `${anoReferencia}-${String(numero).padStart(2, '0')}`;
   }
 
-  const data = parseData(valor);
+  const mesNome = mesPorNomeResumo(texto);
+
+  if (mesNome) {
+    return `${anoReferencia}-${String(mesNome).padStart(2, '0')}`;
+  }
+
+  const data = parseData(texto);
 
   if (data) return chaveMes(data);
 
@@ -258,15 +360,50 @@ function periodoEhMesExato(periodoSelecionado) {
   return /^\d{4}-\d{2}$/.test(String(periodoSelecionado || '').trim());
 }
 
-function processarResumo(linhas, anoReferencia = CONFIG.anoBase) {
-  const idx = acharCabecalho(linhas, ['DATA', 'TON TOTAL', 'BURACO']);
+function acharCabecalhoResumo(linhas) {
+  const possibilidades = [
+    ['DATA', 'BURACO'],
+    ['MES', 'BURACO'],
+    ['MÊS', 'BURACO'],
+    ['PERIODO', 'BURACO'],
+    ['PERÍODO', 'BURACO'],
+    ['TON TOTAL', 'BURACO'],
+    ['TONELAGEM', 'BURACO']
+  ];
+
+  for (const obrigatorias of possibilidades) {
+    for (let i = 0; i < linhas.length; i++) {
+      const texto = normalizarTexto(linhas[i].join(' | '));
+
+      if (obrigatorias.every(p => texto.includes(normalizarTexto(p)))) {
+        return i;
+      }
+    }
+  }
+
+  return -1;
+}
+
+function linhaResumoTemValor(item) {
+  return (
+    Number(item.tonelagem || 0) > 0 ||
+    Number(item.area || 0) > 0 ||
+    Number(item.buracos || 0) > 0
+  );
+}
+
+function processarResumoVertical(linhas, anoReferencia = CONFIG.anoBase) {
+  const idx = acharCabecalhoResumo(linhas);
+
+  if (idx < 0) return [];
+
   const cabecalho = linhas[idx];
   const dados = linhas.slice(idx + 1);
 
-  const colData = indiceColuna(cabecalho, ['DATA'], 0);
-  const colTon = indiceColuna(cabecalho, ['TON TOTAL'], 1);
+  const colData = indiceColuna(cabecalho, ['DATA', 'MES', 'MÊS', 'PERIODO', 'PERÍODO'], 0);
+  const colTon = indiceColuna(cabecalho, ['TON TOTAL', 'TONELAGEM', 'TON'], 1);
   const colArea = indiceColuna(cabecalho, ['AREA', 'ÁREA'], 2);
-  const colBuraco = indiceColuna(cabecalho, ['BURACO'], 3);
+  const colBuraco = indiceColuna(cabecalho, ['BURACO', 'QNT', 'QUANTIDADE'], 3);
 
   return dados
     .map(linha => {
@@ -281,8 +418,134 @@ function processarResumo(linhas, anoReferencia = CONFIG.anoBase) {
         buracos: parseNumero(linha[colBuraco])
       };
     })
-    .filter(Boolean);
+    .filter(item => item && linhaResumoTemValor(item));
 }
+
+function processarResumoVerticalSemCabecalho(linhas, anoReferencia = CONFIG.anoBase) {
+  return linhas
+    .map(linha => {
+      const mes = parseMesResumo(linha[0], anoReferencia);
+
+      if (!mes) return null;
+
+      return {
+        mes,
+        tonelagem: parseNumero(linha[1]),
+        area: parseNumero(linha[2]),
+        buracos: parseNumero(linha[3])
+      };
+    })
+    .filter(item => item && linhaResumoTemValor(item));
+}
+
+function identificarLinhaMesesResumo(linhas, anoReferencia = CONFIG.anoBase) {
+  let melhor = {
+    indice: -1,
+    colunas: []
+  };
+
+  linhas.forEach((linha, indice) => {
+    const colunas = [];
+
+    linha.forEach((celula, coluna) => {
+      const mes = parseMesResumo(celula, anoReferencia);
+
+      if (mes) {
+        colunas.push({ coluna, mes });
+      }
+    });
+
+    if (colunas.length > melhor.colunas.length) {
+      melhor = { indice, colunas };
+    }
+  });
+
+  return melhor.colunas.length >= 2 ? melhor : null;
+}
+
+function encontrarLinhaMetricaResumo(linhas, inicio, predicado) {
+  for (let i = inicio; i < linhas.length; i++) {
+    const texto = normalizarTexto(
+      linhas[i]
+        .slice(0, 6)
+        .join(' | ')
+    );
+
+    if (predicado(texto)) {
+      return i;
+    }
+  }
+
+  for (let i = 0; i < inicio; i++) {
+    const texto = normalizarTexto(
+      linhas[i]
+        .slice(0, 6)
+        .join(' | ')
+    );
+
+    if (predicado(texto)) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+function processarResumoHorizontal(linhas, anoReferencia = CONFIG.anoBase) {
+  const linhaMeses = identificarLinhaMesesResumo(linhas, anoReferencia);
+
+  if (!linhaMeses) return [];
+
+  const inicioBusca = linhaMeses.indice + 1;
+
+  const idxTon = encontrarLinhaMetricaResumo(
+    linhas,
+    inicioBusca,
+    texto => texto.includes('TON TOTAL') || texto.includes('TONELAGEM') || /(^|\s)TON(\s|$)/.test(texto)
+  );
+
+  const idxArea = encontrarLinhaMetricaResumo(
+    linhas,
+    inicioBusca,
+    texto => texto.includes('AREA') || texto.includes('ÁREA') || texto.includes('M2') || texto.includes('M²')
+  );
+
+  const idxBuraco = encontrarLinhaMetricaResumo(
+    linhas,
+    inicioBusca,
+    texto => texto.includes('BURACO') || texto.includes('QNT') || texto.includes('QUANTIDADE')
+  );
+
+  if (idxTon < 0 && idxArea < 0 && idxBuraco < 0) {
+    return [];
+  }
+
+  return linhaMeses.colunas
+    .map(({ coluna, mes }) => ({
+      mes,
+      tonelagem: idxTon >= 0 ? parseNumero(linhas[idxTon][coluna]) : 0,
+      area: idxArea >= 0 ? parseNumero(linhas[idxArea][coluna]) : 0,
+      buracos: idxBuraco >= 0 ? parseNumero(linhas[idxBuraco][coluna]) : 0
+    }))
+    .filter(linhaResumoTemValor);
+}
+
+function processarResumo(linhas, anoReferencia = CONFIG.anoBase) {
+  const tentativas = [
+    processarResumoVertical(linhas, anoReferencia),
+    processarResumoVerticalSemCabecalho(linhas, anoReferencia),
+    processarResumoHorizontal(linhas, anoReferencia)
+  ];
+
+  for (const resultado of tentativas) {
+    if (resultado.length) {
+      return resultado;
+    }
+  }
+
+  return [];
+}
+
 function processarGeral(linhas, anoReferencia = CONFIG.anoBase) {
   const idx = acharCabecalho(linhas, ['DATA', 'BAIRRO', 'LOGADOURO']);
   const cabecalho = linhas[idx];
@@ -324,10 +587,62 @@ function dadosDoPeriodo(periodoSelecionado) {
   );
 }
 
+function acumularResumoMensal(mapa, mes, valores) {
+  if (!mes) return;
+
+  if (!mapa.has(mes)) {
+    mapa.set(mes, {
+      mes,
+      tonelagem: 0,
+      area: 0,
+      buracos: 0
+    });
+  }
+
+  const item = mapa.get(mes);
+
+  item.tonelagem += Number(valores.tonelagem || 0);
+  item.area += Number(valores.area || 0);
+  item.buracos += Number(valores.buracos || 0);
+}
+
+function resumoMensalTapaBuraco(periodoSelecionado = 'todos') {
+  const mapa = new Map();
+
+  (state.resumo || [])
+    .filter(item =>
+      periodoContemMes(item.mes, periodoSelecionado)
+    )
+    .forEach(item => {
+      acumularResumoMensal(mapa, item.mes, item);
+    });
+
+  const resumoPorGeral = new Map();
+
+  (state.geral || [])
+    .filter(item =>
+      periodoContemMes(item.mes, periodoSelecionado)
+    )
+    .forEach(item => {
+      acumularResumoMensal(resumoPorGeral, item.mes, {
+        tonelagem: item.tonelagem,
+        area: item.area,
+        buracos: 1
+      });
+    });
+
+  resumoPorGeral.forEach((item, mes) => {
+    if (!mapa.has(mes)) {
+      mapa.set(mes, item);
+    }
+  });
+
+  return Array.from(mapa.values())
+    .sort((a, b) => String(a.mes).localeCompare(String(b.mes)));
+}
+
 function resumoDoPeriodo(periodoSelecionado) {
-  const dados = state.resumo.filter(item =>
-    periodoContemMes(item.mes, periodoSelecionado)
-  );
+  const dados = resumoMensalTapaBuraco(periodoSelecionado);
 
   if (!dados.length) return null;
 
@@ -362,13 +677,7 @@ function renderGraficoMensalTapaBuraco(mesSelecionado = 'todos') {
 
   if (!canvas) return;
 
-  const dadosBase = (state.resumo || [])
-    .slice()
-    .sort((a, b) => String(a.mes).localeCompare(String(b.mes)));
-
-  const dados = dadosBase.filter(item =>
-    periodoContemMes(item.mes, mesSelecionado)
-  );
+  const dados = resumoMensalTapaBuraco(mesSelecionado);
 
   const labels = dados.map(item => {
     const partes = String(item.mes || '').split('-');
