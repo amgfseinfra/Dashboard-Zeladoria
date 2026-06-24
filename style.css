@@ -333,3 +333,16 @@ td:last-child, th:last-child { text-align: right; }
 #settranAnaliseEquipe.analysis-note.ok {
   color: var(--text);
 }
+
+
+/* Ajuste pontual da aba SESURB: inclui o seletor de empresa
+   na mesma linha dos filtros, sem afetar as demais abas. */
+.sesurb-filters {
+  grid-template-columns: 220px minmax(220px, 1fr) 220px 1fr;
+}
+
+@media (max-width: 900px) {
+  .sesurb-filters {
+    grid-template-columns: 1fr;
+  }
+}
