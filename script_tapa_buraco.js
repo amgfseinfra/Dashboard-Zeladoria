@@ -18,6 +18,7 @@ const state = {
   geral: [],
   settran: [],
   sesurb: {},
+  sesurbTotais: {},
   charts: {}
 };
 
@@ -1238,6 +1239,25 @@ function processarServicoSesurb(
     );
 }
 
+function somarColunaMedidaSesurb(
+  linhas,
+  chaveServico
+) {
+
+  const cfg =
+    SESURB_SERVICOS[chaveServico];
+
+  return linhas
+    .slice(2)
+    .reduce(
+      (soma, linha) =>
+        soma + parseNumeroSesurb(
+          linha[cfg.colMedida]
+        ),
+      0
+    );
+}
+
 function preencherSelectSesurbServico() {
 
   const select =
@@ -1376,13 +1396,25 @@ function renderSesurbTotal() {
   const cfg =
     SESURB_SERVICOS[servico];
 
-  const total =
+  const mes =
+    $('sesurbMonth')?.value ||
+    'todos';
+
+  const totalPeriodo =
     dadosSesurbPeriodo()
       .reduce(
         (soma, item) =>
           soma + item.quantidade,
         0
       );
+
+  const total =
+    mes === 'todos'
+      ? (
+          state.sesurbTotais?.[servico] ??
+          totalPeriodo
+        )
+      : totalPeriodo;
 
   if ($('sesurbTotal')) {
 
@@ -1769,6 +1801,33 @@ async function carregarSesurb(
 
     sarjeta:
       processarServicoSesurb(
+        sarjetaCSV,
+        'sarjeta'
+      )
+  };
+
+  state.sesurbTotais = {
+
+    capinaManual:
+      somarColunaMedidaSesurb(
+        capinaManualCSV,
+        'capinaManual'
+      ),
+
+    capinaEletrica:
+      somarColunaMedidaSesurb(
+        capinaEletricaCSV,
+        'capinaEletrica'
+      ),
+
+    drenagem:
+      somarColunaMedidaSesurb(
+        drenagemCSV,
+        'drenagem'
+      ),
+
+    sarjeta:
+      somarColunaMedidaSesurb(
         sarjetaCSV,
         'sarjeta'
       )
