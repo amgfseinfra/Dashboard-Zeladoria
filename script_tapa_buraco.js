@@ -931,10 +931,8 @@ function renderNecessidadeSettran() {
   const dados =
     dadosSettranDoPeriodo(mesSelecionado);
 
-  const diasComProducao =
-    dados.filter(item =>
-      item.producao > 0
-    ).length;
+  const diasConsiderados =
+    dados.length;
 
   const totalPeriodo =
     dados.reduce(
@@ -944,14 +942,14 @@ function renderNecessidadeSettran() {
     );
 
   const mediaReal =
-    diasComProducao > 0
-      ? totalPeriodo / diasComProducao
+    diasConsiderados > 0
+      ? totalPeriodo / diasConsiderados
       : 0;
 
   if (mediaRealEl) {
 
     mediaRealEl.textContent =
-      `Média do período selecionado: ${formatNumber(mediaReal, 2)} m²/dia`;
+      `Média do período selecionado, considerando dias sem produção: ${formatNumber(mediaReal, 2)} m²/dia`;
   }
 
   if (analiseEl) {
