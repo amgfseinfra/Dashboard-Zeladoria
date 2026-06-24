@@ -734,7 +734,13 @@ function renderGraficoMensalTapaBuraco(mesSelecionado = 'todos') {
     return `${nomeCurto}/${String(ano).slice(-2)}`;
   });
 
-  const tonelagens = dados.map(item => item.tonelagem || 0);
+  const tonelagens = dados.map(item => {
+    if (item.mes === '2025-01') {
+      return 1810.21;
+    }
+
+    return item.tonelagem || 0;
+  });
   const buracos = dados.map(item => item.buracos || 0);
 
   if (state.charts.tapaMensal) {
