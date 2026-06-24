@@ -6,7 +6,7 @@
   <title>Dashboard Zeladoria Urbana</title>
   <link rel="stylesheet" href="style.css" />
  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="script_tapa_buraco.js?v=66" defer></script>
+<script src="script_tapa_buraco.js?v=67" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -63,22 +63,22 @@
       <section class="chart-grid">
         <article class="card chart-card wide">
           <div class="card-title">
+            <h2>Produção mensal — Tapa-buraco</h2>
+            <p>Comparativo mensal entre tonelagem total aplicada e quantidade de buracos tapados.</p>
+          </div>
+          <canvas id="chartTapaMensal"></canvas>
+        </article>
+      </section>
+
+      <section class="chart-grid">
+        <article class="card chart-card wide">
+          <div class="card-title">
             <h2>Buracos tapados por dia</h2>
             <p>Quantidade de buracos tapados em cada dia do período selecionado. Dias sem produção aparecem como zero.</p>
           </div>
           <canvas id="chartTapaDiario"></canvas>
         </article>
       </section>
-
-      <section class="chart-grid">
-  <article class="card chart-card wide">
-    <div class="card-title">
-      <h2>Produção mensal — Tapa-buraco</h2>
-      <p>Comparativo mensal entre toneladas aplicadas e quantidade de buracos tapados.</p>
-    </div>
-    <canvas id="chartTapaMensal"></canvas>
-  </article>
-</section>
 
       <section class="chart-grid two-columns">
         <article class="card table-card">
