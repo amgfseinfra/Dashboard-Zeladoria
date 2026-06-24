@@ -2,7 +2,12 @@
 
 const CONFIG = {
   anoBase: 2026,
+  anosTapaBuraco: [2025, 2026],
   urls: {
+    resumoTon2025: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT3jWK5McM1uihHhf2Oh_qG69l0DZMqVgIGd2N2nj_RS6c_nSujTZn3lxYZkOd-pDNXicCMu_JdbFQp/pub?gid=0&single=true&output=csv',
+    geral2025: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT3jWK5McM1uihHhf2Oh_qG69l0DZMqVgIGd2N2nj_RS6c_nSujTZn3lxYZkOd-pDNXicCMu_JdbFQp/pub?gid=991801807&single=true&output=csv',
+    logradouros2025: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT3jWK5McM1uihHhf2Oh_qG69l0DZMqVgIGd2N2nj_RS6c_nSujTZn3lxYZkOd-pDNXicCMu_JdbFQp/pub?gid=1117105709&single=true&output=csv',
+    bairros2025: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT3jWK5McM1uihHhf2Oh_qG69l0DZMqVgIGd2N2nj_RS6c_nSujTZn3lxYZkOd-pDNXicCMu_JdbFQp/pub?gid=1982400006&single=true&output=csv',
     resumoTon: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4LFVuZ0zcS7_0vZYDu9k4UN2TRQ3e5wDYAlxyBnLTXri8YV-9LBYugIcTgbeZDxc6UerJK1f7OeC8/pub?gid=0&single=true&output=csv',
     geral: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4LFVuZ0zcS7_0vZYDu9k4UN2TRQ3e5wDYAlxyBnLTXri8YV-9LBYugIcTgbeZDxc6UerJK1f7OeC8/pub?gid=2071576844&single=true&output=csv',
     settran: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRQfc4beWDtxWWleEmmhZPCHyTP8X6hLmZSCuDJgnK8UjU3roulJuBiU4zDYIkQxx48DUd_qpKYJ3xc/pub?gid=0&single=true&output=csv',
@@ -167,11 +172,11 @@ function parseData(valor) {
   return data;
 }
 
-function parseMesResumo(valor) {
+function parseMesResumo(valor, anoReferencia = CONFIG.anoBase) {
   const numero = Number(String(valor ?? '').trim());
 
   if (Number.isFinite(numero) && numero >= 1 && numero <= 12) {
-    return `${CONFIG.anoBase}-${String(numero).padStart(2, '0')}`;
+    return `${anoReferencia}-${String(numero).padStart(2, '0')}`;
   }
 
   const data = parseData(valor);
@@ -223,16 +228,37 @@ function preencherSelectMeses() {
 
   select.add(new Option('Todos', 'todos'));
 
-  for (let mes = 1; mes <= 12; mes++) {
-    const valor = `${CONFIG.anoBase}-${String(mes).padStart(2, '0')}`;
-    const texto = `${nomesMeses[mes - 1]} de ${CONFIG.anoBase}`;
-    select.add(new Option(texto, valor));
-  }
+  (CONFIG.anosTapaBuraco || [CONFIG.anoBase]).forEach(ano => {
+    select.add(new Option(`Ano ${ano}`, String(ano)));
+
+    for (let mes = 1; mes <= 12; mes++) {
+      const valor = `${ano}-${String(mes).padStart(2, '0')}`;
+      const texto = `${nomesMeses[mes - 1]} de ${ano}`;
+      select.add(new Option(texto, valor));
+    }
+  });
 
   select.value = 'todos';
 }
 
-function processarResumo(linhas) {
+function periodoContemMes(mesItem, periodoSelecionado) {
+  if (periodoSelecionado === 'todos') return true;
+
+  const periodo = String(periodoSelecionado || '').trim();
+  const mes = String(mesItem || '').trim();
+
+  if (/^\d{4}$/.test(periodo)) {
+    return mes.startsWith(`${periodo}-`);
+  }
+
+  return mes === periodo;
+}
+
+function periodoEhMesExato(periodoSelecionado) {
+  return /^\d{4}-\d{2}$/.test(String(periodoSelecionado || '').trim());
+}
+
+function processarResumo(linhas, anoReferencia = CONFIG.anoBase) {
   const idx = acharCabecalho(linhas, ['DATA', 'TON TOTAL', 'BURACO']);
   const cabecalho = linhas[idx];
   const dados = linhas.slice(idx + 1);
@@ -242,9 +268,9 @@ function processarResumo(linhas) {
   const colArea = indiceColuna(cabecalho, ['AREA', 'ÁREA'], 2);
   const colBuraco = indiceColuna(cabecalho, ['BURACO'], 3);
 
-  state.resumo = dados
+  return dados
     .map(linha => {
-      const mes = parseMesResumo(linha[colData]);
+      const mes = parseMesResumo(linha[colData], anoReferencia);
 
       if (!mes) return null;
 
@@ -257,7 +283,7 @@ function processarResumo(linhas) {
     })
     .filter(Boolean);
 }
-function processarGeral(linhas) {
+function processarGeral(linhas, anoReferencia = CONFIG.anoBase) {
   const idx = acharCabecalho(linhas, ['DATA', 'BAIRRO', 'LOGADOURO']);
   const cabecalho = linhas[idx];
   const dados = linhas.slice(idx + 1);
@@ -268,12 +294,12 @@ function processarGeral(linhas) {
   const colArea = indiceColuna(cabecalho, ['AREA', 'ÁREA'], 3);
   const colTon = indiceColuna(cabecalho, ['POR SERVICO', 'POR SERVIÇO'], 4);
 
-  state.geral = dados
+  return dados
     .map(linha => {
       const data = parseData(linha[colData]);
 
       if (!data) return null;
-      if (data.getFullYear() !== CONFIG.anoBase) return null;
+      if (data.getFullYear() !== anoReferencia) return null;
 
       const bairro = String(linha[colBairro] || '').trim();
       const logradouro = String(linha[colLogradouro] || '').trim();
@@ -292,28 +318,28 @@ function processarGeral(linhas) {
     .filter(Boolean);
 }
 
-function dadosDoPeriodo(mesSelecionado) {
-  if (mesSelecionado === 'todos') {
-    return state.geral;
-  }
-
-  return state.geral.filter(item => item.mes === mesSelecionado);
+function dadosDoPeriodo(periodoSelecionado) {
+  return state.geral.filter(item =>
+    periodoContemMes(item.mes, periodoSelecionado)
+  );
 }
 
-function resumoDoPeriodo(mesSelecionado) {
-  if (mesSelecionado === 'todos') {
-    return state.resumo.reduce(
-      (acc, item) => {
-        acc.tonelagem += item.tonelagem;
-        acc.area += item.area;
-        acc.buracos += item.buracos;
-        return acc;
-      },
-      { tonelagem: 0, area: 0, buracos: 0 }
-    );
-  }
+function resumoDoPeriodo(periodoSelecionado) {
+  const dados = state.resumo.filter(item =>
+    periodoContemMes(item.mes, periodoSelecionado)
+  );
 
-  return state.resumo.find(item => item.mes === mesSelecionado) || null;
+  if (!dados.length) return null;
+
+  return dados.reduce(
+    (acc, item) => {
+      acc.tonelagem += item.tonelagem;
+      acc.area += item.area;
+      acc.buracos += item.buracos;
+      return acc;
+    },
+    { tonelagem: 0, area: 0, buracos: 0 }
+  );
 }
 
 function renderKPIs(mesSelecionado) {
@@ -340,17 +366,18 @@ function renderGraficoMensalTapaBuraco(mesSelecionado = 'todos') {
     .slice()
     .sort((a, b) => String(a.mes).localeCompare(String(b.mes)));
 
-  const dados = mesSelecionado === 'todos'
-    ? dadosBase
-    : dadosBase.filter(item => item.mes === mesSelecionado);
+  const dados = dadosBase.filter(item =>
+    periodoContemMes(item.mes, mesSelecionado)
+  );
 
   const labels = dados.map(item => {
     const partes = String(item.mes || '').split('-');
     const ano = partes[0] || CONFIG.anoBase;
     const mes = Number(partes[1]);
     const nomeMes = nomesMeses[mes - 1] || item.mes;
+    const nomeCurto = String(nomeMes).slice(0, 3).toLowerCase();
 
-    return `${String(nomeMes).toLowerCase()}, ${ano}`;
+    return `${nomeCurto}/${String(ano).slice(-2)}`;
   });
 
   const tonelagens = dados.map(item => item.tonelagem || 0);
@@ -438,7 +465,7 @@ function renderGraficoDiario(mesSelecionado) {
   const labels = [];
   const valores = [];
 
-  if (mesSelecionado === 'todos') {
+  if (!periodoEhMesExato(mesSelecionado)) {
     const datas = dados
       .map(item => item.data)
       .sort((a, b) => a - b);
@@ -1998,14 +2025,20 @@ async function iniciar() {
     configurarEventos();
 
     const [
-      resumoCSV,
-      geralCSV,
+      resumoCSV2025,
+      geralCSV2025,
+      resumoCSV2026,
+      geralCSV2026,
       settranCSV,
       capinaManualCSV,
       capinaEletricaCSV,
       drenagemCSV,
       sarjetaCSV
     ] = await Promise.all([
+
+      fetchCSV(CONFIG.urls.resumoTon2025),
+
+      fetchCSV(CONFIG.urls.geral2025),
 
       fetchCSV(CONFIG.urls.resumoTon),
 
@@ -2022,9 +2055,15 @@ async function iniciar() {
       fetchCSV(CONFIG.urls.sarjeta)
     ]);
 
-    processarResumo(resumoCSV);
+    state.resumo = [
+      ...processarResumo(resumoCSV2025, 2025),
+      ...processarResumo(resumoCSV2026, 2026)
+    ];
 
-    processarGeral(geralCSV);
+    state.geral = [
+      ...processarGeral(geralCSV2025, 2025),
+      ...processarGeral(geralCSV2026, 2026)
+    ];
 
     processarSettran(settranCSV);
 
