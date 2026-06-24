@@ -325,22 +325,46 @@ function indiceColuna(cabecalho, nomes, fallback) {
 }
 
 function preencherSelectMeses() {
-  const select = $('tapaMonth');
-  select.innerHTML = '';
+  const selectAno = $('tapaYear');
+  const selectMes = $('tapaMonth');
 
-  select.add(new Option('Todos', 'todos'));
+  if (selectAno) {
+    selectAno.innerHTML = '';
+    selectAno.add(new Option('Todos', 'todos'));
 
-  (CONFIG.anosTapaBuraco || [CONFIG.anoBase]).forEach(ano => {
-    select.add(new Option(`Ano ${ano}`, String(ano)));
+    (CONFIG.anosTapaBuraco || [CONFIG.anoBase]).forEach(ano => {
+      selectAno.add(new Option(String(ano), String(ano)));
+    });
+
+    selectAno.value = 'todos';
+  }
+
+  if (selectMes) {
+    selectMes.innerHTML = '';
+    selectMes.add(new Option('Todos', 'todos'));
 
     for (let mes = 1; mes <= 12; mes++) {
-      const valor = `${ano}-${String(mes).padStart(2, '0')}`;
-      const texto = `${nomesMeses[mes - 1]} de ${ano}`;
-      select.add(new Option(texto, valor));
+      selectMes.add(
+        new Option(
+          nomesMeses[mes - 1],
+          String(mes).padStart(2, '0')
+        )
+      );
     }
-  });
 
-  select.value = 'todos';
+    selectMes.value = 'todos';
+  }
+}
+
+function obterPeriodoTapaBuraco() {
+  const ano = $('tapaYear')?.value || 'todos';
+  const mes = $('tapaMonth')?.value || 'todos';
+
+  if (ano === 'todos' && mes === 'todos') return 'todos';
+  if (ano !== 'todos' && mes === 'todos') return String(ano);
+  if (ano !== 'todos' && mes !== 'todos') return `${ano}-${mes}`;
+
+  return `mes-${mes}`;
 }
 
 function periodoContemMes(mesItem, periodoSelecionado) {
@@ -351,6 +375,10 @@ function periodoContemMes(mesItem, periodoSelecionado) {
 
   if (/^\d{4}$/.test(periodo)) {
     return mes.startsWith(`${periodo}-`);
+  }
+
+  if (/^mes-\d{2}$/.test(periodo)) {
+    return mes.endsWith(`-${periodo.slice(4)}`);
   }
 
   return mes === periodo;
@@ -631,16 +659,33 @@ function resumoMensalTapaBuraco(periodoSelecionado = 'todos') {
       });
     });
 
-  resumoPorGeral.forEach((item, mes) => {
+  resumoPorGeral.forEach((itemGeral, mes) => {
     if (!mapa.has(mes)) {
-      mapa.set(mes, item);
+      mapa.set(mes, itemGeral);
+      return;
+    }
+
+    const itemResumo = mapa.get(mes);
+    const ano = Number(String(mes).slice(0, 4));
+
+    // Para 2025, usa a tonelagem mensal consolidada pela aba GERAL quando disponível.
+    // Isso evita divergências pontuais do RESUMO TON no gráfico mensal, como janeiro/2025.
+    if (ano === 2025 && Number(itemGeral.tonelagem || 0) > 0) {
+      itemResumo.tonelagem = Number(itemGeral.tonelagem || 0);
+    }
+
+    if (Number(itemResumo.area || 0) <= 0 && Number(itemGeral.area || 0) > 0) {
+      itemResumo.area = Number(itemGeral.area || 0);
+    }
+
+    if (Number(itemResumo.buracos || 0) <= 0 && Number(itemGeral.buracos || 0) > 0) {
+      itemResumo.buracos = Number(itemGeral.buracos || 0);
     }
   });
 
   return Array.from(mapa.values())
     .sort((a, b) => String(a.mes).localeCompare(String(b.mes)));
 }
-
 function resumoDoPeriodo(periodoSelecionado) {
   const dados = resumoMensalTapaBuraco(periodoSelecionado);
 
@@ -900,13 +945,13 @@ function renderRanking(id, ranking) {
 }
 
 function renderTudo() {
-  const mesSelecionado = $('tapaMonth').value;
+  const periodoSelecionado = obterPeriodoTapaBuraco();
 
-  renderKPIs(mesSelecionado);
-  renderGraficoMensalTapaBuraco(mesSelecionado);
-  renderGraficoDiario(mesSelecionado);
-  renderRanking('rankVias', gerarRanking('logradouro', mesSelecionado));
-  renderRanking('rankBairros', gerarRanking('bairro', mesSelecionado));
+  renderKPIs(periodoSelecionado);
+  renderGraficoMensalTapaBuraco(periodoSelecionado);
+  renderGraficoDiario(periodoSelecionado);
+  renderRanking('rankVias', gerarRanking('logradouro', periodoSelecionado));
+  renderRanking('rankBairros', gerarRanking('bairro', periodoSelecionado));
 }function parseDataSettran(valor) {
   const texto = normalizarTexto(valor).replace(/\s/g, '');
   const match = texto.match(/^(\d{1,2})\/?([A-Z]{3})$/);
@@ -2178,11 +2223,23 @@ async function carregarSesurb(
 
 function configurarEventos() {
 
-  $('tapaMonth')
-    .addEventListener(
-      'change',
-      renderTudo
-    );
+  if ($('tapaYear')) {
+
+    $('tapaYear')
+      .addEventListener(
+        'change',
+        renderTudo
+      );
+  }
+
+  if ($('tapaMonth')) {
+
+    $('tapaMonth')
+      .addEventListener(
+        'change',
+        renderTudo
+      );
+  }
 
   $('refreshTapa')
     .addEventListener(
