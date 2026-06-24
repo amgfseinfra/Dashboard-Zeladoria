@@ -32,6 +32,36 @@ const nomesMeses = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
+const CORRECOES_MANUAIS_TAPA_MENSAL = {
+  '2025-01': {
+    tonelagem: 1810.21
+  }
+};
+
+function chaveMesNormalizada(valor) {
+  const texto = String(valor ?? '').trim();
+  const match = texto.match(/^(\d{4})-(\d{1,2})$/);
+
+  if (!match) return texto;
+
+  return `${match[1]}-${String(Number(match[2])).padStart(2, '0')}`;
+}
+
+function aplicarCorrecoesManuaisTapaMensal(item) {
+  if (!item) return item;
+
+  const chave = chaveMesNormalizada(item.mes);
+  const correcao = CORRECOES_MANUAIS_TAPA_MENSAL[chave];
+
+  if (!correcao) return item;
+
+  if (Object.prototype.hasOwnProperty.call(correcao, 'tonelagem')) {
+    item.tonelagem = Number(correcao.tonelagem);
+  }
+
+  return item;
+}
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -684,6 +714,7 @@ function resumoMensalTapaBuraco(periodoSelecionado = 'todos') {
   });
 
   return Array.from(mapa.values())
+    .map(item => aplicarCorrecoesManuaisTapaMensal(item))
     .sort((a, b) => String(a.mes).localeCompare(String(b.mes)));
 }
 function resumoDoPeriodo(periodoSelecionado) {
@@ -735,10 +766,7 @@ function renderGraficoMensalTapaBuraco(mesSelecionado = 'todos') {
   });
 
   const tonelagens = dados.map(item => {
-    if (item.mes === '2025-01') {
-      return 1810.21;
-    }
-
+    aplicarCorrecoesManuaisTapaMensal(item);
     return item.tonelagem || 0;
   });
   const buracos = dados.map(item => item.buracos || 0);
