@@ -346,3 +346,144 @@ td:last-child, th:last-child { text-align: right; }
     grid-template-columns: 1fr;
   }
 }
+
+/* Resumo geral da SESURB: cards compactos, expandidos por padrão e recolhíveis no clique. */
+.sesurb-summary-compact {
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.sesurb-summary-compact details {
+  padding: 0;
+}
+
+.sesurb-summary-compact summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sesurb-summary-compact summary::-webkit-details-marker {
+  display: none;
+}
+
+.sesurb-summary-compact-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sesurb-summary-compact-title strong {
+  font-size: 17px;
+}
+
+.sesurb-summary-compact-title span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sesurb-summary-action {
+  border: 1px solid rgba(29, 78, 216, .35);
+  border-radius: 999px;
+  background: rgba(29, 78, 216, .08);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+  padding: 9px 12px;
+  white-space: nowrap;
+}
+
+.sesurb-summary-compact summary:hover .sesurb-summary-action,
+.sesurb-summary-compact details[open] .sesurb-summary-action {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.sesurb-compact-note {
+  border-top: 1px solid var(--line);
+  padding: 12px 18px 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sesurb-mini-grid {
+  padding: 14px 18px 18px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sesurb-mini-item {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 12px;
+  min-height: 94px;
+}
+
+.sesurb-mini-item span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.sesurb-mini-item strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.sesurb-mini-item small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+  .sesurb-mini-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .sesurb-summary-compact summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .sesurb-mini-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .sesurb-mini-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sesurb-summary-action .when-open {
+  display: none;
+}
+
+.sesurb-summary-compact details[open] .sesurb-summary-action .when-closed {
+  display: none;
+}
+
+.sesurb-summary-compact details[open] .sesurb-summary-action .when-open {
+  display: inline;
+}
+
