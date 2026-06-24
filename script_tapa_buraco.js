@@ -423,6 +423,98 @@ function renderGraficoDiario(mesSelecionado) {
   });
 }
 
+function renderGraficoMensalTapaBuraco() {
+  const canvas = $('chartTapaMensal');
+
+  if (!canvas) return;
+
+  const dados = state.resumo
+    .slice()
+    .filter(item => item && item.mes)
+    .sort((a, b) => a.mes.localeCompare(b.mes));
+
+  const labels = dados.map(item => {
+    const [ano, mes] = item.mes.split('-').map(Number);
+    return `${nomesMeses[mes - 1].toLowerCase()}, ${ano}`;
+  });
+
+  const toneladas = dados.map(item => item.tonelagem);
+  const buracos = dados.map(item => item.buracos);
+
+  if (state.charts.tapaMensal) {
+    state.charts.tapaMensal.destroy();
+  }
+
+  state.charts.tapaMensal = new Chart(canvas, {
+    type: 'bar',
+
+    data: {
+      labels,
+
+      datasets: [
+        {
+          label: 'TON TOTAL',
+          data: toneladas,
+          backgroundColor: '#4472c4',
+          borderColor: '#4472c4',
+          borderWidth: 1
+        },
+        {
+          label: 'BURACO (QNT)',
+          data: buracos,
+          backgroundColor: '#ed7d31',
+          borderColor: '#ed7d31',
+          borderWidth: 1
+        }
+      ]
+    },
+
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+
+      plugins: {
+        legend: {
+          position: 'bottom'
+        },
+
+        tooltip: {
+          callbacks: {
+            label: contexto => {
+              const label = contexto.dataset.label || '';
+              const valor = contexto.parsed.y || 0;
+
+              const casas =
+                label === 'TON TOTAL'
+                  ? 2
+                  : 0;
+
+              return `${label}: ${formatNumber(valor, casas)}`;
+            }
+          }
+        }
+      },
+
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: valor => formatNumber(valor, 0)
+          }
+        },
+
+        x: {
+          ticks: {
+            autoSkip: false,
+            maxRotation: 0,
+            minRotation: 0
+          }
+        }
+      }
+    }
+  });
+}
+
 function gerarRanking(campo, mesSelecionado) {
   const mapa = new Map();
 
@@ -472,9 +564,12 @@ function renderTudo() {
 
   renderKPIs(mesSelecionado);
   renderGraficoDiario(mesSelecionado);
+  renderGraficoMensalTapaBuraco();
   renderRanking('rankVias', gerarRanking('logradouro', mesSelecionado));
   renderRanking('rankBairros', gerarRanking('bairro', mesSelecionado));
-}function parseDataSettran(valor) {
+}
+
+function parseDataSettran(valor) {
   const texto = normalizarTexto(valor).replace(/\s/g, '');
   const match = texto.match(/^(\d{1,2})\/?([A-Z]{3})$/);
 
