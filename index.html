@@ -6,7 +6,7 @@
   <title>Dashboard Zeladoria Urbana</title>
   <link rel="stylesheet" href="style.css" />
  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="script_tapa_buraco.js?v=77" defer></script>
+<script src="script_tapa_buraco.js?v=78" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -33,10 +33,16 @@
 
     <section id="panel-tapa" class="panel active">
       <section class="filters card">
+        <label for="tapaYear">
+          Ano de referência
+          <select id="tapaYear"></select>
+        </label>
+
         <label for="tapaMonth">
           Mês de referência
           <select id="tapaMonth"></select>
         </label>
+
         <button id="refreshTapa" type="button">Atualizar leitura</button>
       </section>
 
